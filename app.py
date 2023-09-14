@@ -316,63 +316,6 @@ if selected_opt == "want to insert channel id":
             retrieve_and_insert_comments(channel_id_in)
 
 
-        def make_api_request_with_rate_limit(api_service, api_method, **kwargs):
-            retries = 0
-            max_retries = 3  # You can adjust the maximum number of retries
-
-            while retries < max_retries:
-                try:
-                    # Add a delay before making the request
-                    time.sleep(2)  # Adjust the delay time as needed
-
-                    # Make the API request
-                    request = getattr(api_service, api_method)(**kwargs)
-                    response = request.execute()
-
-                    return response
-                except HttpError as e:
-                    if e.resp.status == 403:
-                        # Handle quota exceeded error by waiting and retrying
-                        print("Quota exceeded. Waiting for quota reset...")
-                        time.sleep(3600)  # Wait for an hour before retrying
-                        retries += 1
-                    else:
-                        raise e
-
-
-        # Create a YouTube API service instance
-        youtube = build("youtube", "v3", developerKey=api_key)
-
-        # Define parameters for the initial request
-        initial_request_params = {
-            "part": "id",
-            "channelId": channel_id_in,
-            "maxResults": 50,  # Adjust the batch size as needed
-            "pageToken": None
-        }
-
-        # Initialize lists to store video IDs
-        video_ids = []
-
-        # Paginate through the results
-        while True:
-            # Make the API request with rate limiting and retries
-            response = make_api_request_with_rate_limit(youtube.search(), "list", **initial_request_params)
-
-            # Extract video IDs from the response
-            for item in response.get("items", []):
-                if item["id"]["kind"] == "youtube#video":
-                    video_ids.append(item["id"]["videoId"])
-
-            # Check if there are more pages of results
-            if "nextPageToken" in response:
-                initial_request_params["pageToken"] = response["nextPageToken"]
-            else:
-                break
-
-        # Now you have all the video IDs
-        print("Video IDs:", video_ids)
-
 elif selected_opt == "display sql query to retrive information":
 
     # Streamlit UI for displaying data from the SQL Data Warehouse
