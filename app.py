@@ -285,160 +285,158 @@ def retrieve_and_insert_comments(channel_id):
         st.error(f"Error retrieving or inserting comment data for channel ID {channel_id}: {e}")
 
 # Streamlit UI
-st.title("YouTube Data Migration App")
+option=["want to insert channel id","display sql query to retrive information"]
+selected_opt = st.selectbox("Select a option", option)
+if selected_opt == "want to insert channel id":
+    st.title("YouTube Data Migration App")
 
-# Input for channel IDs
-channel_ids = st.text_area("Enter 10 YouTube Channel IDs (one per line)", height=100).strip().split('\n')
+    # Input for channel IDs
+    channel_ids = st.text_area("Enter 10 YouTube Channel IDs (one per line)", height=100).strip().split('\n')
 
-if len(channel_ids) != 10:
-    st.warning("Please enter exactly 10 YouTube Channel IDs.")
-else:
-    # Create a dropdown for selecting a channel ID
-    channel_id_in = st.selectbox("Select a YouTube Channel ID", channel_ids)
-    if st.button(f"Retrieve Channel Details for {channel_id_in}"):
-        # Insert channel data into MongoDB and MySQL
-        insert_channel_data(channel_id_in)
+    if len(channel_ids) != 10:
+        st.warning("Please enter exactly 10 YouTube Channel IDs.")
+    else:
+        # Create a dropdown for selecting a channel ID
+        channel_id_in = st.selectbox("Select a YouTube Channel ID", channel_ids)
+        if st.button(f"Retrieve Channel Details for {channel_id_in}"):
+            # Insert channel data into MongoDB and MySQL
+            insert_channel_data(channel_id_in)
 
-    if st.button(f"Retrieve Playlist Details for {channel_id_in}"):
-        # Insert playlist data into MongoDB and MySQL
-        get_playlists_for_channel(channel_id_in)
+        if st.button(f"Retrieve Playlist Details for {channel_id_in}"):
+            # Insert playlist data into MongoDB and MySQL
+            get_playlists_for_channel(channel_id_in)
 
-    if st.button(f"Retrieve Video Details for {channel_id_in}"):
-        # Retrieve video details and insert into MongoDB and MySQL
-        video_details = get_videos_for_channel(channel_id_in)
-        st.success(f"Video data for channel ID {channel_id_in} migrated successfully.")
+        if st.button(f"Retrieve Video Details for {channel_id_in}"):
+            # Retrieve video details and insert into MongoDB and MySQL
+            video_details = get_videos_for_channel(channel_id_in)
+            st.success(f"Video data for channel ID {channel_id_in} migrated successfully.")
 
-    if st.button(f"Retrieve Comment Details for {channel_id_in}"):
-        # Retrieve and insert comments for videos associated with the channel
-        retrieve_and_insert_comments(channel_id_in)
-
-
-    def make_api_request_with_rate_limit(api_service, api_method, **kwargs):
-        retries = 0
-        max_retries = 3  # You can adjust the maximum number of retries
-
-        while retries < max_retries:
-            try:
-                # Add a delay before making the request
-                time.sleep(2)  # Adjust the delay time as needed
-
-                # Make the API request
-                request = getattr(api_service, api_method)(**kwargs)
-                response = request.execute()
-
-                return response
-            except HttpError as e:
-                if e.resp.status == 403:
-                    # Handle quota exceeded error by waiting and retrying
-                    print("Quota exceeded. Waiting for quota reset...")
-                    time.sleep(3600)  # Wait for an hour before retrying
-                    retries += 1
-                else:
-                    raise e
+        if st.button(f"Retrieve Comment Details for {channel_id_in}"):
+            # Retrieve and insert comments for videos associated with the channel
+            retrieve_and_insert_comments(channel_id_in)
 
 
-    # Create a YouTube API service instance
-    youtube = build("youtube", "v3", developerKey=api_key)
+        def make_api_request_with_rate_limit(api_service, api_method, **kwargs):
+            retries = 0
+            max_retries = 3  # You can adjust the maximum number of retries
 
-    # Define parameters for the initial request
-    initial_request_params = {
-        "part": "id",
-        "channelId": channel_id_in,
-        "maxResults": 50,  # Adjust the batch size as needed
-        "pageToken": None
-    }
+            while retries < max_retries:
+                try:
+                    # Add a delay before making the request
+                    time.sleep(2)  # Adjust the delay time as needed
 
-    # Initialize lists to store video IDs
-    video_ids = []
+                    # Make the API request
+                    request = getattr(api_service, api_method)(**kwargs)
+                    response = request.execute()
 
-    # Paginate through the results
-    while True:
-        # Make the API request with rate limiting and retries
-        response = make_api_request_with_rate_limit(youtube.search(), "list", **initial_request_params)
-
-        # Extract video IDs from the response
-        for item in response.get("items", []):
-            if item["id"]["kind"] == "youtube#video":
-                video_ids.append(item["id"]["videoId"])
-
-        # Check if there are more pages of results
-        if "nextPageToken" in response:
-            initial_request_params["pageToken"] = response["nextPageToken"]
-        else:
-            break
-
-    # Now you have all the video IDs
-    print("Video IDs:", video_ids)
+                    return response
+                except HttpError as e:
+                    if e.resp.status == 403:
+                        # Handle quota exceeded error by waiting and retrying
+                        print("Quota exceeded. Waiting for quota reset...")
+                        time.sleep(3600)  # Wait for an hour before retrying
+                        retries += 1
+                    else:
+                        raise e
 
 
+        # Create a YouTube API service instance
+        youtube = build("youtube", "v3", developerKey=api_key)
 
+        # Define parameters for the initial request
+        initial_request_params = {
+            "part": "id",
+            "channelId": channel_id_in,
+            "maxResults": 50,  # Adjust the batch size as needed
+            "pageToken": None
+        }
 
+        # Initialize lists to store video IDs
+        video_ids = []
 
-# Function to make API requests with rate limiting and retries
+        # Paginate through the results
+        while True:
+            # Make the API request with rate limiting and retries
+            response = make_api_request_with_rate_limit(youtube.search(), "list", **initial_request_params)
 
+            # Extract video IDs from the response
+            for item in response.get("items", []):
+                if item["id"]["kind"] == "youtube#video":
+                    video_ids.append(item["id"]["videoId"])
 
-# Streamlit UI for displaying data from the SQL Data Warehouse
-# Streamlit UI for displaying data from the SQL Data Warehouse
-if st.checkbox("Display Data from SQL Data Warehouse"):
-    st.subheader("Data from SQL Data Warehouse")
+            # Check if there are more pages of results
+            if "nextPageToken" in response:
+                initial_request_params["pageToken"] = response["nextPageToken"]
+            else:
+                break
 
-    # Establish MySQL database connection
-    db_connection = connect_to_mysql()
+        # Now you have all the video IDs
+        print("Video IDs:", video_ids)
 
-    if db_connection:
-        st.success("Connected to MySQL database")
-        cursor = db_connection.cursor()
-        ques=["What are the names of all the videos and their corresponding channels?",
-              "Which channels have the most number of videos, and how many videos do they have?",
-              "What are the top 10 most viewed videos and their respective channels?",
-               "How many comments were made on each video, and what are their corresponding video names?",
-               "Which videos have the highest number of likes, and what are their  corresponding channel names?",
-               "What is the total number of likes and dislikes for each video, and what are their corresponding video names?",
-              "What is the total number of views for each channel, and what are their corresponding channel names?",
-               "What are the names of all the channels that have published videos in the year 2022?",
-              "What is the average duration of all videos in each channel, and what are their corresponding channel names?",
-               "Which videos have the highest number of comments, and what are their corresponding channel names?"]
-        # Execute SQL query to fetch data (modify the query as needed)
-        selected_q = st.selectbox("Select a ques", ques)
-        if selected_q=='What are the names of all the videos and their corresponding channels?':
-            cursor.execute(" SELECT videos.title AS video_title, channels_data_f.channel_name AS channel_name FROM videos INNER JOIN channels_data_f ON videos.channel_id = channels_data_f.channel_id;")  # Replace with your table name
-            data_from_sql = cursor.fetchall()
-        elif selected_q=='Which channels have the most number of videos, and how many videos do they have?':
-            cursor.execute("select channels_data_f.channel_id, channels_data_f.channel_name, count(video_id) as video_count from channels_data_f left join videos on channels_data_f.channel_id=videos.channel_id group by channels_data_f.channel_id, channels_data_f.channel_name order by 3 desc;")
-            data_from_sql = cursor.fetchall()
-        elif selected_q == 'What are the top 10 most viewed videos and their respective channels?':
-            cursor.execute("select video_id, title, view_count, channel_name from videos left join channels_data_f on videos.channel_id = channels_data_f.channel_id order by view_count desc limit 10;")
-            data_from_sql = cursor.fetchall()
-        elif selected_q == 'How many comments were made on each video, and what are their corresponding video names?':
-            cursor.execute("select video_id,title, comment_count from videos order by 3 desc;")
-            data_from_sql = cursor.fetchall()
-        elif selected_q == 'Which videos have the highest number of likes, and what are their corresponding channel names?':
-            cursor.execute("select video_id, title,like_count,channel_name from videos left join channels_data_f on "
-                           "videos.channel_id=channels_data_f.channel_id order by like_count limit 1;")
-            data_from_sql = cursor.fetchall()
-        elif selected_q == 'What is the total number of likes and dislikes for each video, and what are their corresponding video names?':
-            cursor.execute('select title,like_count as likes from videos;')
-            data_from_sql = cursor.fetchall()
-        elif selected_q == 'What is the total number of views for each channel, and what are their corresponding channel names?':
-            cursor.execute("select channel_id, channel_name, channel_views from channels_data_f order by 3 desc;")
-            data_from_sql = cursor.fetchall()
-        elif selected_q == 'What are the names of all the channels that have published videos in the year 2022?':
-            cursor.execute(("select distinct channel_name from videos left join channels_data_f on videos.channel_id=channels_data_f.channel_id where year(published_at) = 2022;"))
-            data_from_sql = cursor.fetchall()
-        elif selected_q == 'What is the average duration of all videos in each channel, and what are their corresponding channel names?':
-            cursor.execute("select videos.channel_id,channel_name,avg(duration) as duration from videos left join channels_data_f on videos.channel_id=channels_data_f.channel_id group by videos.channel_id,channel_name;")
-            data_from_sql = cursor.fetchall()
-        elif selected_q == 'Which videos have the highest number of comments, and what are their corresponding channel names?':
-            cursor.execute("select video_id,title,comment_count,channel_name from videos left join channels_data_f on videos.channel_id=channels_data_f.channel_id order by comment_count desc limit 1;")
-            data_from_sql = cursor.fetchall()
-        else:
-            st.write("invalid input")
-        # Display data in a table or any other format you prefer
-        if data_from_sql:
-            st.write("Data from SQL Data Warehouse:")
-            for row in data_from_sql:
-                st.write(row)
+elif selected_opt == "display sql query to retrive information":
 
-        # Close the MySQL connection
-        db_connection.close()
-        st.success("MySQL connection closed")
+    # Streamlit UI for displaying data from the SQL Data Warehouse
+    # Streamlit UI for displaying data from the SQL Data Warehouse
+    if st.checkbox("Display Data from SQL Data Warehouse"):
+        st.subheader("Data from SQL Data Warehouse")
+
+        # Establish MySQL database connection
+        db_connection = connect_to_mysql()
+
+        if db_connection:
+            st.success("Connected to MySQL database")
+            cursor = db_connection.cursor()
+            ques=["What are the names of all the videos and their corresponding channels?",
+                  "Which channels have the most number of videos, and how many videos do they have?",
+                  "What are the top 10 most viewed videos and their respective channels?",
+                   "How many comments were made on each video, and what are their corresponding video names?",
+                   "Which videos have the highest number of likes, and what are their  corresponding channel names?",
+                   "What is the total number of likes and dislikes for each video, and what are their corresponding video names?",
+                  "What is the total number of views for each channel, and what are their corresponding channel names?",
+                   "What are the names of all the channels that have published videos in the year 2022?",
+                  "What is the average duration of all videos in each channel, and what are their corresponding channel names?",
+                   "Which videos have the highest number of comments, and what are their corresponding channel names?"]
+            # Execute SQL query to fetch data (modify the query as needed)
+            selected_q = st.selectbox("Select a ques", ques)
+            if selected_q=='What are the names of all the videos and their corresponding channels?':
+                cursor.execute(" SELECT videos.title AS video_title, channels_data_f.channel_name AS channel_name FROM videos INNER JOIN channels_data_f ON videos.channel_id = channels_data_f.channel_id;")  # Replace with your table name
+                data_from_sql = cursor.fetchall()
+            elif selected_q=='Which channels have the most number of videos, and how many videos do they have?':
+                cursor.execute("select channels_data_f.channel_id, channels_data_f.channel_name, count(video_id) as video_count from channels_data_f left join videos on channels_data_f.channel_id=videos.channel_id group by channels_data_f.channel_id, channels_data_f.channel_name order by 3 desc;")
+                data_from_sql = cursor.fetchall()
+            elif selected_q == 'What are the top 10 most viewed videos and their respective channels?':
+                cursor.execute("select video_id, title, view_count, channel_name from videos left join channels_data_f on videos.channel_id = channels_data_f.channel_id order by view_count desc limit 10;")
+                data_from_sql = cursor.fetchall()
+            elif selected_q == 'How many comments were made on each video, and what are their corresponding video names?':
+                cursor.execute("select video_id,title, comment_count from videos order by 3 desc;")
+                data_from_sql = cursor.fetchall()
+            elif selected_q == 'Which videos have the highest number of likes, and what are their corresponding channel names?':
+                cursor.execute("select video_id, title,like_count,channel_name from videos left join channels_data_f on "
+                               "videos.channel_id=channels_data_f.channel_id order by like_count limit 1;")
+                data_from_sql = cursor.fetchall()
+            elif selected_q == 'What is the total number of likes and dislikes for each video, and what are their corresponding video names?':
+                cursor.execute('select title,like_count as likes from videos;')
+                data_from_sql = cursor.fetchall()
+            elif selected_q == 'What is the total number of views for each channel, and what are their corresponding channel names?':
+                cursor.execute("select channel_id, channel_name, channel_views from channels_data_f order by 3 desc;")
+                data_from_sql = cursor.fetchall()
+            elif selected_q == 'What are the names of all the channels that have published videos in the year 2022?':
+                cursor.execute(("select distinct channel_name from videos left join channels_data_f on videos.channel_id=channels_data_f.channel_id where year(published_at) = 2022;"))
+                data_from_sql = cursor.fetchall()
+            elif selected_q == 'What is the average duration of all videos in each channel, and what are their corresponding channel names?':
+                cursor.execute("select videos.channel_id,channel_name,avg(duration) as duration from videos left join channels_data_f on videos.channel_id=channels_data_f.channel_id group by videos.channel_id,channel_name;")
+                data_from_sql = cursor.fetchall()
+            elif selected_q == 'Which videos have the highest number of comments, and what are their corresponding channel names?':
+                cursor.execute("select video_id,title,comment_count,channel_name from videos left join channels_data_f on videos.channel_id=channels_data_f.channel_id order by comment_count desc limit 1;")
+                data_from_sql = cursor.fetchall()
+            else:
+                st.write("invalid input")
+            # Display data in a table or any other format you prefer
+            if data_from_sql:
+                st.write("Data from SQL Data Warehouse:")
+                for row in data_from_sql:
+                    st.write(row)
+
+            # Close the MySQL connection
+            db_connection.close()
+            st.success("MySQL connection closed")
