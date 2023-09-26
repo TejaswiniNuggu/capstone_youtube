@@ -12,7 +12,7 @@ from bson import ObjectId
 
 api_key = "AIzaSyCN_qQFtYR8NA1rfG81uaGgUWddShXWrzc"
 # MongoDB connection
-mongo_client = pymongo.MongoClient("mongodb://localhost:27017/")
+mongo_client = pymongo.MongoClient("mongodb+srv://tejaswininuggu:Tejudatabase@cluster0.g7gvc.mongodb.net")
 mongo_db = mongo_client["final_capstone_db"]
 mongo_collection = mongo_db["final_capstone_coll"]
 
